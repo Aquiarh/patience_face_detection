@@ -3,7 +3,7 @@ from PIL import Image
 import numpy as np
 import io
 import os
-import glob
+import re
 
 # 1. Page Configuration
 st.set_page_config(
@@ -70,9 +70,19 @@ with tabs[0]:
         "bounding box accuracy, target classification, and confidence scores directly in the browser."
     )
 
-    sample_files = sorted(
-        glob.glob("sample*.jpg") + glob.glob("sample*.jpeg") + glob.glob("sample*.png")
-    )
+    # Case-insensitive scan for all sample images (.jpg, .png, .PNG, .jpeg)
+    valid_extensions = (".jpg", ".jpeg", ".png", ".webp")
+    all_files = os.listdir(".")
+    sample_files = [
+        f for f in all_files 
+        if f.lower().startswith("sample") and f.lower().endswith(valid_extensions)
+    ]
+
+    # Natural sorting so sample10 comes after sample9
+    def natural_sort_key(s):
+        return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
+    
+    sample_files.sort(key=natural_sort_key)
 
     if sample_files:
         selected_file = st.selectbox(
@@ -105,7 +115,7 @@ with tabs[0]:
                 else:
                     st.error(f"Cannot run detection: {model_status}")
     else:
-        st.warning("No sample files found matching 'sample*.jpg'. Place your sample images into the repository root.")
+        st.warning("No sample files found matching 'sample*.jpg' or 'sample*.png'. Place your sample images into the repository root.")
 
 # ----------------- TAB 2: LIVE UPLOAD / WEBCAM -----------------
 with tabs[1]:
