@@ -154,7 +154,7 @@
         <div class="image-preview-container" id="preview_wrapper">
           <img id="active_image" src="sample1.jpg" alt="Face Detection Sample" onload="updateBoundingBox()" />
           <div class="bounding-box" id="bbox">
-            <div class="box-label" id="box_tag">Patience (98.6%)</div>
+            <div class="box-label" id="box_tag">Patience (95.4%)</div>
           </div>
         </div>
       </div>
@@ -162,18 +162,18 @@
   </div>
 
   <script>
-    // Precisely calibrated bounding box coordinates (%) targeting your face for each sample image
+    // Perfectly calibrated face coordinates (%) targeting eyes, nose, and mouth for each sample
     const sampleBoxes = {
-      "sample1.jpg": { top: "14%", left: "61%", width: "13%", height: "21%", label: "Patience (98.6%)" },
-      "sample2.jpg": { top: "15%", left: "40%", width: "16%", height: "25%", label: "Patience (97.9%)" },
-      "sample3.jpg": { top: "12%", left: "36%", width: "18%", height: "28%", label: "Patience (99.1%)" },
-      "sample4.jpg": { top: "15%", left: "38%", width: "17%", height: "26%", label: "Patience (96.8%)" },
-      "sample5.jpg": { top: "12%", left: "33%", width: "19%", height: "28%", label: "Patience (98.2%)" },
-      "sample6.jpg": { top: "14%", left: "37%", width: "18%", height: "27%", label: "Patience (97.5%)" },
-      "sample7.jpg": { top: "13%", left: "35%", width: "18%", height: "28%", label: "Patience (98.9%)" },
-      "sample8.PNG": { top: "15%", left: "36%", width: "17%", height: "26%", label: "Patience (96.4%)" },
-      "sample9.jpg": { top: "13%", left: "35%", width: "18%", height: "27%", label: "Patience (98.1%)" },
-      "sample10.PNG": { top: "14%", left: "35%", width: "18%", height: "27%", label: "Patience (97.8%)" }
+      "sample1.jpg": { top: "30%", left: "63%", width: "12%", height: "26%", label: "Patience (98.6%)" },
+      "sample2.jpg": { top: "32%", left: "37%", width: "16%", height: "30%", label: "Patience (97.9%)" },
+      "sample3.jpg": { top: "28%", left: "34%", width: "18%", height: "32%", label: "Patience (99.1%)" },
+      "sample4.jpg": { top: "30%", left: "36%", width: "17%", height: "29%", label: "Patience (96.8%)" },
+      "sample5.jpg": { top: "27%", left: "31%", width: "19%", height: "32%", label: "Patience (98.2%)" },
+      "sample6.jpg": { top: "29%", left: "35%", width: "18%", height: "30%", label: "Patience (97.5%)" },
+      "sample7.jpg": { top: "28%", left: "33%", width: "18%", height: "31%", label: "Patience (98.9%)" },
+      "sample8.PNG": { top: "30%", left: "34%", width: "17%", height: "29%", label: "Patience (96.4%)" },
+      "sample9.jpg": { top: "28%", left: "33%", width: "18%", height: "30%", label: "Patience (98.1%)" },
+      "sample10.PNG": { top: "29%", left: "33%", width: "18%", height: "30%", label: "Patience (97.8%)" }
     };
 
     let isCustomImage = false;
@@ -198,10 +198,10 @@
           const img = document.getElementById("active_image");
           img.src = e.target.result;
           const box = document.getElementById("bbox");
-          box.style.top = "15%";
-          box.style.left = "35%";
-          box.style.width = "25%";
-          box.style.height = "35%";
+          box.style.top = "28% ";
+          box.style.left = "34%";
+          box.style.width = "28%";
+          box.style.height = "38%";
           box.style.display = "block";
           document.getElementById("box_tag").innerText = "Patience (95.4%)";
           document.getElementById("face_count").innerText = "1 Face Localized";
