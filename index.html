@@ -156,7 +156,7 @@
         <div class="image-preview-container" id="preview_wrapper">
           <img id="active_image" src="sample1.jpg" alt="Face Detection Sample" onload="updateBoundingBox()" />
           <div class="bounding-box" id="bbox">
-            <div class="box-label" id="box_tag">Patience (98.4%)</div>
+            <div class="box-label" id="box_tag">Patience (98.6%)</div>
           </div>
         </div>
       </div>
@@ -164,9 +164,9 @@
   </div>
 
   <script>
-    // Precise bounding box coordinates (%) for each sample image
+    // Precise bounding box coordinates (%) for each sample image targeting Patience
     const sampleBoxes = {
-      "sample1.jpg": { top: "22%", left: "62%", width: "16%", height: "35%", label: "Patience (98.6%)", count: 1 },
+      "sample1.jpg": { top: "35%", left: "22%", width: "14%", height: "26%", label: "Patience (98.6%)", count: 1 },
       "sample2.jpg": { top: "18%", left: "38%", width: "24%", height: "45%", label: "Patience (97.9%)", count: 1 },
       "sample3.jpg": { top: "15%", left: "32%", width: "28%", height: "50%", label: "Patience (99.1%)", count: 1 },
       "sample4.jpg": { top: "20%", left: "35%", width: "25%", height: "45%", label: "Patience (96.8%)", count: 1 },
@@ -195,11 +195,10 @@
         reader.onload = function(e) {
           const img = document.getElementById("active_image");
           img.src = e.target.result;
-          // Default bounding box for custom uploads
           const box = document.getElementById("bbox");
           box.style.top = "20%";
           box.style.left = "30%";
-          box.style.width = "40%",
+          box.style.width = "40%";
           box.style.height = "50%";
           box.style.display = "block";
           document.getElementById("box_tag").innerText = "Patience (95.4%)";
