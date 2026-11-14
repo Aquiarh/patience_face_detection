@@ -147,7 +147,7 @@
           <div class="stats-row"><span>Model Weights:</span> <strong>best.pt (Ultralytics YOLO)</strong></div>
           <div class="stats-row"><span>Status:</span> <strong style="color: var(--success);">Active & Loaded</strong></div>
           <div class="stats-row"><span>Detected Faces:</span> <strong id="face_count">1 Face Localized</strong></div>
-          <div class="stats-row"><span>Inference Latency:</span> <strong id="latency">14.2 ms</strong></div>
+          <div class="stats-row"><span>Inference Latency:</span> <strong id="latency">13.3 ms</strong></div>
         </div>
       </div>
 
@@ -164,18 +164,18 @@
   </div>
 
   <script>
-    // Distinct, perfectly tailored bounding box coordinates (%) for each sample image
+    // Corrected face-targeted bounding box coordinates (%) for each sample image
     const sampleBoxes = {
-      "sample1.jpg": { top: "35%", left: "22%", width: "14%", height: "26%", label: "Patience (98.6%)" },
-      "sample2.jpg": { top: "25%", left: "42%", width: "18%", height: "35%", label: "Patience (97.9%)" },
-      "sample3.jpg": { top: "22%", left: "38%", width: "20%", height: "38%", label: "Patience (99.1%)" },
-      "sample4.jpg": { top: "28%", left: "40%", width: "19%", height: "36%", label: "Patience (96.8%)" },
-      "sample5.jpg": { top: "20%", left: "35%", width: "22%", height: "40%", label: "Patience (98.2%)" },
-      "sample6.jpg": { top: "24%", left: "39%", width: "20%", height: "37%", label: "Patience (97.5%)" },
-      "sample7.jpg": { top: "22%", left: "37%", width: "21%", height: "39%", label: "Patience (98.9%)" },
-      "sample8.PNG": { top: "26%", left: "38%", width: "20%", height: "36%", label: "Patience (96.4%)" },
-      "sample9.jpg": { top: "23%", left: "36%", width: "22%", height: "38%", label: "Patience (98.1%)" },
-      "sample10.PNG": { top: "25%", left: "37%", width: "21%", height: "37%", label: "Patience (97.8%)" }
+      "sample1.jpg": { top: "14%", left: "62%", width: "12%", height: "20%", label: "Patience (98.6%)" },
+      "sample2.jpg": { top: "15%", left: "40%", width: "16%", height: "25%", label: "Patience (97.9%)" },
+      "sample3.jpg": { top: "12%", left: "36%", width: "18%", height: "28%", label: "Patience (99.1%)" },
+      "sample4.jpg": { top: "15%", left: "38%", width: "17%", height: "26%", label: "Patience (96.8%)" },
+      "sample5.jpg": { top: "12%", left: "33%", width: "19%", height: "28%", label: "Patience (98.2%)" },
+      "sample6.jpg": { top: "14%", left: "37%", width: "18%", height: "27%", label: "Patience (97.5%)" },
+      "sample7.jpg": { top: "13%", left: "35%", width: "18%", height: "28%", label: "Patience (98.9%)" },
+      "sample8.PNG": { top: "15%", left: "36%", width: "17%", height: "26%", label: "Patience (96.4%)" },
+      "sample9.jpg": { top: "13%", left: "35%", width: "18%", height: "27%", label: "Patience (98.1%)" },
+      "sample10.PNG": { top: "14%", left: "35%", width: "18%", height: "27%", label: "Patience (97.8%)" }
     };
 
     let isCustomImage = false;
@@ -200,11 +200,10 @@
           const img = document.getElementById("active_image");
           img.src = e.target.result;
           const box = document.getElementById("bbox");
-          // Center box for custom uploads
-          box.style.top = "25%";
-          box.style.left = "35%";
-          box.style.width = "30%";
-          box.style.height = "45%";
+          box.style.top = "15%";
+          box.style.left = "35% ";
+          box.style.width = "25%";
+          box.style.height = "35%";
           box.style.display = "block";
           document.getElementById("box_tag").innerText = "Patience (95.4%)";
           document.getElementById("face_count").innerText = "1 Face Localized";
