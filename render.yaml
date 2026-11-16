@@ -1,0 +1,9 @@
+
+services:
+  - type: web
+    name: patience-face-detection-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn inference_api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    plan: free

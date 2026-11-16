@@ -141,11 +141,20 @@
           <input type="file" id="custom_upload" accept="image/*" onchange="loadCustomImage(event)" />
         </div>
 
+        <div class="control">
+          <button
+             id="detect_button"
+             onclick="runDetection()"
+             style="width:100%; padding:12px; background:var(--accent); color:white; border:0; border-radius:6px; cursor:pointer; font-weight:bold;">
+             Run Face Detection
+         </button>
+        </div>
+
         <div class="stats-box">
           <div class="stats-row"><span>Model Weights:</span> <strong style="color: var(--success);">best.pt (Loaded)</strong></div>
           <div class="stats-row"><span>Framework:</span> <strong>Ultralytics YOLO</strong></div>
-          <div class="stats-row"><span>Detected Faces:</span> <strong id="face_count">1 Face Localized</strong></div>
-          <div class="stats-row"><span>Inference Latency:</span> <strong id="latency">14.2 ms</strong></div>
+          <div class="stats-row"><span>Detected Faces:</span> <strong id="face_count">Not yet tested</strong></div>         
+          <div class="stats-row"><span>Inference Latency:</span> <strong id="latency">--</strong></div>
         </div>
       </div>
 
@@ -153,7 +162,7 @@
         <h2>Inference & Bounding Box Output</h2>
         <div class="image-preview-container" id="preview_wrapper">
           <img id="active_image" src="sample1.jpg" alt="Face Detection Sample" onload="updateBoundingBox()" />
-          <div class="bounding-box" id="bbox">
+          <div class="bounding-box" id="bbox" style="display: none;">
             <div class="box-label" id="box_tag">Patience (95.4%)</div>
           </div>
         </div>
@@ -162,78 +171,190 @@
   </div>
 
   <script>
-    // Perfectly calibrated face coordinates (%) targeting eyes, nose, and mouth for each sample
-    const sampleBoxes = {
-      "sample1.jpg": { top: "30%", left: "63%", width: "12%", height: "26%", label: "Patience (98.6%)" },
-      "sample2.jpg": { top: "32%", left: "37%", width: "16%", height: "30%", label: "Patience (97.9%)" },
-      "sample3.jpg": { top: "28%", left: "34%", width: "18%", height: "32%", label: "Patience (99.1%)" },
-      "sample4.jpg": { top: "30%", left: "36%", width: "17%", height: "29%", label: "Patience (96.8%)" },
-      "sample5.jpg": { top: "27%", left: "31%", width: "19%", height: "32%", label: "Patience (98.2%)" },
-      "sample6.jpg": { top: "29%", left: "35%", width: "18%", height: "30%", label: "Patience (97.5%)" },
-      "sample7.jpg": { top: "28%", left: "33%", width: "18%", height: "31%", label: "Patience (98.9%)" },
-      "sample8.PNG": { top: "30%", left: "34%", width: "17%", height: "29%", label: "Patience (96.4%)" },
-      "sample9.jpg": { top: "28%", left: "33%", width: "18%", height: "30%", label: "Patience (98.1%)" },
-      "sample10.PNG": { top: "29%", left: "33%", width: "18%", height: "30%", label: "Patience (97.8%)" }
-    };
+   
+const API_URL = "http://127.0.0.1:8000";
 
-    let isCustomImage = false;
+let selectedFile = null;
+let currentImageUrl = null;
+let currentImageWidth = 0;
+let currentImageHeight = 0;
 
-    function updateConfidence(val) {
-      document.getElementById("conf_val").innerText = parseFloat(val).toFixed(2);
-    }
+const image = document.getElementById("active_image");
+const box = document.getElementById("bbox");
+const tag = document.getElementById("box_tag");
 
-    function changeSampleImage() {
-      isCustomImage = false;
-      const select = document.getElementById("image_select").value;
-      const img = document.getElementById("active_image");
-      img.src = select;
-    }
+function updateConfidence(value) {
+  document.getElementById("conf_val").innerText =
+    Number(value).toFixed(2);
+}
 
-    function loadCustomImage(event) {
-      const file = event.target.files[0];
-      if (file) {
-        isCustomImage = true;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          const img = document.getElementById("active_image");
-          img.src = e.target.result;
-          const box = document.getElementById("bbox");
-          box.style.top = "28% ";
-          box.style.left = "34%";
-          box.style.width = "28%";
-          box.style.height = "38%";
-          box.style.display = "block";
-          document.getElementById("box_tag").innerText = "Patience (95.4%)";
-          document.getElementById("face_count").innerText = "1 Face Localized";
-          document.getElementById("latency").innerText = "18.5 ms";
-        }
-        reader.readAsDataURL(file);
+function resetResults() {
+  box.style.display = "none";
+  document.getElementById("face_count").innerText = "Not yet tested";
+  document.getElementById("latency").innerText = "--";
+}
+
+function changeSampleImage() {
+  const filename = document.getElementById("image_select").value;
+
+  selectedFile = null;
+  resetResults();
+
+  if (currentImageUrl) {
+    URL.revokeObjectURL(currentImageUrl);
+    currentImageUrl = null;
+  }
+
+  image.src = filename;
+  document.getElementById("custom_upload").value = "";
+}
+
+function loadCustomImage(event) {
+  const file = event.target.files[0];
+
+  if (!file) return;
+
+  selectedFile = file;
+  resetResults();
+
+  if (currentImageUrl) {
+    URL.revokeObjectURL(currentImageUrl);
+  }
+
+  currentImageUrl = URL.createObjectURL(file);
+  image.src = currentImageUrl;
+}
+
+function drawDetections(detections) {
+  box.style.display = "none";
+
+  const wrapper = document.getElementById("preview_wrapper");
+
+  wrapper.querySelectorAll(".dynamic-box").forEach(
+    element => element.remove()
+  );
+
+  const displayedWidth = image.clientWidth;
+  const displayedHeight = image.clientHeight;
+
+  detections.forEach((detection, index) => {
+    const [x1, y1, x2, y2] = detection.bbox;
+
+    const dynamicBox = document.createElement("div");
+    dynamicBox.className = "bounding-box dynamic-box";
+
+    dynamicBox.style.left =
+      `${(x1 / currentImageWidth) * displayedWidth}px`;
+
+    dynamicBox.style.top =
+      `${(y1 / currentImageHeight) * displayedHeight}px`;
+
+    dynamicBox.style.width =
+      `${((x2 - x1) / currentImageWidth) * displayedWidth}px`;
+
+    dynamicBox.style.height =
+      `${((y2 - y1) / currentImageHeight) * displayedHeight}px`;
+
+    const label = document.createElement("div");
+    label.className = "box-label";
+    label.innerText =
+      `${detection.label} (${(detection.confidence * 100).toFixed(2)}%)`;
+
+    dynamicBox.appendChild(label);
+    wrapper.appendChild(dynamicBox);
+  });
+}
+
+async function runDetection() {
+  
+async function runDetection() {
+  const button = document.getElementById("detect_button");
+
+  button.disabled = true;
+  button.innerText = "Detecting...";
+  resetResults();
+
+  try {
+    let file = selectedFile;
+
+    // If no custom image was uploaded, use the selected sample.
+    if (!file) {
+      const sampleFilename =
+        document.getElementById("image_select").value;
+
+      const sampleResponse = await fetch(sampleFilename);
+
+      if (!sampleResponse.ok) {
+        throw new Error(
+          `Could not load ${sampleFilename} from the project folder.`
+        );
       }
+
+      const blob = await sampleResponse.blob();
+
+      file = new File(
+        [blob],
+        sampleFilename,
+        { type: blob.type || "image/jpeg" }
+      );
     }
 
-    function updateBoundingBox() {
-      if (isCustomImage) return;
+    const confidence =
+      document.getElementById("conf_slider").value;
 
-      const select = document.getElementById("image_select").value;
-      const box = document.getElementById("bbox");
-      const tag = document.getElementById("box_tag");
-      const countEl = document.getElementById("face_count");
-      const latencyEl = document.getElementById("latency");
+    const formData = new FormData();
+    formData.append("image", file);
+    formData.append("confidence", confidence);
 
-      if (sampleBoxes[select]) {
-        const data = sampleBoxes[select];
-        box.style.top = data.top;
-        box.style.left = data.left;
-        box.style.width = data.width;
-        box.style.height = data.height;
-        box.style.display = "block";
-        tag.innerText = data.label;
-        countEl.innerText = "1 Face Localized";
-        latencyEl.innerText = (12 + Math.random() * 6).toFixed(1) + " ms";
-      }
+    const response = await fetch(`${API_URL}/detect`, {
+      method: "POST",
+      body: formData
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.detail || "Detection failed.");
     }
 
-    window.onload = updateBoundingBox;
+    currentImageWidth = result.image_width;
+    currentImageHeight = result.image_height;
+
+    document.getElementById("face_count").innerText =
+      `${result.detection_count} detected`;
+
+    document.getElementById("latency").innerText =
+      `${result.inference_ms.toFixed(2)} ms`;
+
+    drawDetections(result.detections);
+
+    if (result.detection_count === 0) {
+      alert("No matching faces were detected in this image.");
+    }
+
+  } catch (error) {
+    console.error(error);
+    alert(`Could not complete detection: ${error.message}`);
+  } finally {
+    button.disabled = false;
+    button.innerText = "Run Face Detection";
+  }
+}
+
+}
+
+image.addEventListener("load", () => {
+  if (currentImageWidth && currentImageHeight) {
+    drawDetections([]);
+  }
+});
+
+window.addEventListener("resize", () => {
+  // Bounding boxes will be recalculated after the next detection.
+});
+
+resetResults();
+
   </script>
 </body>
 </html>
