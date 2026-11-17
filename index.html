@@ -161,7 +161,7 @@
       <div class="card">
         <h2>Inference & Bounding Box Output</h2>
         <div class="image-preview-container" id="preview_wrapper">
-          <img id="active_image" src="sample1.jpg" alt="Face Detection Sample" onload="updateBoundingBox()" />
+          <img id="active_image" src="sample1.jpg" alt="Face Detection Sample" />
           <div class="bounding-box" id="bbox" style="display: none;">
             <div class="box-label" id="box_tag">Patience (95.4%)</div>
           </div>
@@ -225,6 +225,7 @@ function loadCustomImage(event) {
   image.src = currentImageUrl;
 }
 
+
 function drawDetections(detections) {
   box.style.display = "none";
 
@@ -234,29 +235,35 @@ function drawDetections(detections) {
     element => element.remove()
   );
 
-  const displayedWidth = image.clientWidth;
-  const displayedHeight = image.clientHeight;
+  if (!currentImageWidth || !currentImageHeight) return;
 
-  detections.forEach((detection, index) => {
+  const wrapperRect = wrapper.getBoundingClientRect();
+  const imageRect = image.getBoundingClientRect();
+
+  const offsetX = imageRect.left - wrapperRect.left;
+  const offsetY = imageRect.top - wrapperRect.top;
+
+  detections.forEach(detection => {
     const [x1, y1, x2, y2] = detection.bbox;
 
     const dynamicBox = document.createElement("div");
     dynamicBox.className = "bounding-box dynamic-box";
 
     dynamicBox.style.left =
-      `${(x1 / currentImageWidth) * displayedWidth}px`;
+      `${offsetX + (x1 / currentImageWidth) * imageRect.width}px`;
 
     dynamicBox.style.top =
-      `${(y1 / currentImageHeight) * displayedHeight}px`;
+      `${offsetY + (y1 / currentImageHeight) * imageRect.height}px`;
 
     dynamicBox.style.width =
-      `${((x2 - x1) / currentImageWidth) * displayedWidth}px`;
+      `${((x2 - x1) / currentImageWidth) * imageRect.width}px`;
 
     dynamicBox.style.height =
-      `${((y2 - y1) / currentImageHeight) * displayedHeight}px`;
+      `${((y2 - y1) / currentImageHeight) * imageRect.height}px`;
 
     const label = document.createElement("div");
     label.className = "box-label";
+
     label.innerText =
       `${detection.label} (${(detection.confidence * 100).toFixed(2)}%)`;
 
@@ -265,8 +272,7 @@ function drawDetections(detections) {
   });
 }
 
-async function runDetection() {
-  
+
 async function runDetection() {
   const button = document.getElementById("detect_button");
 
@@ -277,7 +283,7 @@ async function runDetection() {
   try {
     let file = selectedFile;
 
-    // If no custom image was uploaded, use the selected sample.
+    // Load the selected sample image if no custom image was uploaded.
     if (!file) {
       const sampleFilename =
         document.getElementById("image_select").value;
@@ -286,7 +292,7 @@ async function runDetection() {
 
       if (!sampleResponse.ok) {
         throw new Error(
-          `Could not load ${sampleFilename} from the project folder.`
+          `Could not load ${sampleFilename} from the website.`
         );
       }
 
@@ -306,6 +312,7 @@ async function runDetection() {
     formData.append("image", file);
     formData.append("confidence", confidence);
 
+    // Send the image to the deployed Render API.
     const response = await fetch(`${API_URL}/detect`, {
       method: "POST",
       body: formData
@@ -333,14 +340,13 @@ async function runDetection() {
     }
 
   } catch (error) {
-    console.error(error);
+    console.error("Face detection error:", error);
     alert(`Could not complete detection: ${error.message}`);
+
   } finally {
     button.disabled = false;
     button.innerText = "Run Face Detection";
   }
-}
-
 }
 
 image.addEventListener("load", () => {
