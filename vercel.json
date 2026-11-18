@@ -5,5 +5,9 @@
       "maxDuration": 30,
       "includeFiles": "best.onnx"
     }
-  }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.py" },
+    { "source": "/(.*)", "destination": "/public/$1" }
+  ]
 }
