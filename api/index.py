@@ -5,6 +5,7 @@ import time
 import numpy as np
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from PIL import Image, UnidentifiedImageError
 
 try:
@@ -66,7 +67,6 @@ def run_onnx_inference(pil_image: Image.Image, conf_threshold: float):
 
     detections = []
 
-    # Case A: YOLO26n end-to-end NMS-free output [1, N, 6] -> (x1, y1, x2, y2, conf, cls_id)
     if preds.ndim == 3 and preds.shape[-1] == 6:
         for row in preds[0]:
             x1, y1, x2, y2, score, cls_id = row
@@ -84,7 +84,6 @@ def run_onnx_inference(pil_image: Image.Image, conf_threshold: float):
                     ]
                 })
 
-    # Case B: Standard YOLO output [1, 5, 8400] -> (cx, cy, w, h, conf)
     elif preds.ndim == 3 and preds.shape[1] >= 5:
         rows = np.transpose(preds[0], (1, 0))
         boxes, scores = [], []
@@ -197,7 +196,7 @@ async def detect_face(
         else:
             raise HTTPException(
                 status_code=500,
-                detail="Neither best.onnx nor best.pt found. Run export_onnx.py first."
+                detail="Neither best.onnx nor best.pt found in project root."
             )
 
         inference_ms = (time.perf_counter() - start_time) * 1000
@@ -218,9 +217,8 @@ async def detect_face(
         raise
     except Exception as error:
         raise HTTPException(status_code=500, detail=f"YOLO26n inference failed: {str(error)}")
-   from fastapi.staticfiles import StaticFiles
 
-# Serve public/ static files locally when running uvicorn (Vercel handles this via vercel.json)
+
 PUBLIC_DIR = ROOT_DIR / "public"
 if PUBLIC_DIR.exists():
     app.mount("/", StaticFiles(directory=str(PUBLIC_DIR), html=True), name="public")
