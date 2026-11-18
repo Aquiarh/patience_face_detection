@@ -1,12 +1,13 @@
 from pathlib import Path
 from io import BytesIO
+import os
 import time
 
 import numpy as np
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 try:
     import onnxruntime as ort
@@ -29,9 +30,9 @@ INPUT_SIZE = 640
 CLASS_NAMES = {0: "Dela"}
 
 app = FastAPI(
-    title="Patience Face Detection API (YOLO26n)",
-    description="YOLO26n single-class face detection and localization API for target class Dela.",
-    version="2.0.0"
+    title="Patience Face Recognition API",
+    description="Single-class face detection and localization API for target class Dela.",
+    version="2.1.0"
 )
 
 app.add_middleware(
@@ -54,10 +55,26 @@ elif ULTRALYTICS_AVAILABLE and PT_MODEL_PATH.exists():
     ACTIVE_BACKEND = "ultralytics (best.pt)"
 
 
+def letterbox_image(pil_image: Image.Image, target_size: int = 640):
+    """Preserve aspect ratio with Ultralytics standard 114-gray padding."""
+    orig_w, orig_h = pil_image.size
+    scale = min(target_size / orig_w, target_size / orig_h)
+    new_w = int(round(orig_w * scale))
+    new_h = int(round(orig_h * scale))
+
+    resized = pil_image.resize((new_w, new_h), Image.Resampling.BILINEAR)
+    canvas = Image.new("RGB", (target_size, target_size), (114, 114, 114))
+    pad_x = (target_size - new_w) // 2
+    pad_y = (target_size - new_h) // 2
+    canvas.paste(resized, (pad_x, pad_y))
+    return canvas, scale, pad_x, pad_y
+
+
 def run_onnx_inference(pil_image: Image.Image, conf_threshold: float):
     orig_w, orig_h = pil_image.size
-    img_resized = pil_image.resize((INPUT_SIZE, INPUT_SIZE))
-    img_np = np.array(img_resized, dtype=np.float32) / 255.0
+    lb_img, scale, pad_x, pad_y = letterbox_image(pil_image, INPUT_SIZE)
+
+    img_np = np.array(lb_img, dtype=np.float32) / 255.0
     img_np = np.transpose(img_np, (2, 0, 1))
     img_np = np.expand_dims(img_np, axis=0)
 
@@ -72,16 +89,15 @@ def run_onnx_inference(pil_image: Image.Image, conf_threshold: float):
             x1, y1, x2, y2, score, cls_id = row
             if float(score) >= conf_threshold:
                 cid = int(cls_id)
+                rx1 = max(0.0, min(orig_w, (x1 - pad_x) / scale))
+                ry1 = max(0.0, min(orig_h, (y1 - pad_y) / scale))
+                rx2 = max(0.0, min(orig_w, (x2 - pad_x) / scale))
+                ry2 = max(0.0, min(orig_h, (y2 - pad_y) / scale))
                 detections.append({
                     "label": CLASS_NAMES.get(cid, "Dela"),
                     "class_id": cid,
                     "confidence": round(float(score), 4),
-                    "bbox": [
-                        round(float(x1 / INPUT_SIZE * orig_w), 2),
-                        round(float(y1 / INPUT_SIZE * orig_h), 2),
-                        round(float(x2 / INPUT_SIZE * orig_w), 2),
-                        round(float(y2 / INPUT_SIZE * orig_h), 2),
-                    ]
+                    "bbox": [round(rx1, 2), round(ry1, 2), round(rx2, 2), round(ry2, 2)]
                 })
 
     elif preds.ndim == 3 and preds.shape[1] >= 5:
@@ -91,10 +107,10 @@ def run_onnx_inference(pil_image: Image.Image, conf_threshold: float):
             cx, cy, w, h = row[:4]
             score = float(np.max(row[4:]))
             if score >= conf_threshold:
-                x1 = (cx - w / 2.0) / INPUT_SIZE * orig_w
-                y1 = (cy - h / 2.0) / INPUT_SIZE * orig_h
-                x2 = (cx + w / 2.0) / INPUT_SIZE * orig_w
-                y2 = (cy + h / 2.0) / INPUT_SIZE * orig_h
+                x1 = max(0.0, min(orig_w, ((cx - w / 2.0) - pad_x) / scale))
+                y1 = max(0.0, min(orig_h, ((cy - h / 2.0) - pad_y) / scale))
+                x2 = max(0.0, min(orig_w, ((cx + w / 2.0) - pad_x) / scale))
+                y2 = max(0.0, min(orig_h, ((cy + h / 2.0) - pad_y) / scale))
                 boxes.append([x1, y1, x2, y2])
                 scores.append(score)
 
@@ -132,7 +148,7 @@ def run_onnx_inference(pil_image: Image.Image, conf_threshold: float):
 @app.get("/api/")
 def home():
     return {
-        "message": "Patience Face Detection API (YOLO26n) is running.",
+        "message": "Patience Face Recognition API is running.",
         "student": "Korbla Patience Aku Dela - PUIT/24120001",
         "backend": ACTIVE_BACKEND,
         "classes": CLASS_NAMES
@@ -152,10 +168,10 @@ def health():
 @app.post("/api/detect")
 async def detect_face(
     image: UploadFile = File(...),
-    confidence: float = Form(0.40)
+    confidence: float = Form(0.25)
 ):
-    if not 0.10 <= confidence <= 1.00:
-        raise HTTPException(status_code=400, detail="Confidence must be between 0.10 and 1.00.")
+    if not 0.05 <= confidence <= 1.00:
+        raise HTTPException(status_code=400, detail="Confidence must be between 0.05 and 1.00.")
 
     allowed_types = {"image/jpeg", "image/png", "image/webp"}
     if image.content_type not in allowed_types:
@@ -168,7 +184,7 @@ async def detect_face(
         raise HTTPException(status_code=400, detail="Uploaded image is empty.")
 
     try:
-        original_image = Image.open(BytesIO(image_bytes)).convert("RGB")
+        original_image = ImageOps.exif_transpose(Image.open(BytesIO(image_bytes))).convert("RGB")
     except (UnidentifiedImageError, OSError):
         raise HTTPException(status_code=400, detail="The uploaded file is not a valid image.")
 
@@ -194,10 +210,7 @@ async def detect_face(
                 })
             mode = "live_ultralytics"
         else:
-            raise HTTPException(
-                status_code=500,
-                detail="Neither best.onnx nor best.pt found in project root."
-            )
+            raise HTTPException(status_code=500, detail="Model weights not found.")
 
         inference_ms = (time.perf_counter() - start_time) * 1000
 
@@ -216,9 +229,10 @@ async def detect_face(
     except HTTPException:
         raise
     except Exception as error:
-        raise HTTPException(status_code=500, detail=f"YOLO26n inference failed: {str(error)}")
+        raise HTTPException(status_code=500, detail=f"Inference failed: {str(error)}")
 
 
-PUBLIC_DIR = ROOT_DIR / "public"
-if PUBLIC_DIR.exists():
-    app.mount("/", StaticFiles(directory=str(PUBLIC_DIR), html=True), name="public")
+if not os.environ.get("VERCEL"):
+    PUBLIC_DIR = ROOT_DIR / "public"
+    if PUBLIC_DIR.exists():
+        app.mount("/", StaticFiles(directory=str(PUBLIC_DIR), html=True), name="public")
