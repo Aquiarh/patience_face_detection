@@ -40,7 +40,8 @@
       align-items: center;
       min-height: 360px;
     }
-    .image-preview-container img {
+    .image-preview-container img,
+    .image-preview-container video {
       max-width: 100%;
       max-height: 480px;
       height: auto;
@@ -52,7 +53,7 @@
       background: rgba(16, 185, 129, 0.15);
       border-radius: 4px;
       pointer-events: none;
-      transition: all 0.25s ease;
+      transition: all 0.18s ease;
     }
     .box-label {
       position: absolute;
@@ -127,13 +128,35 @@
 
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
 
-    <!-- TAB 1: LIVE INFERENCE -->
+    <!-- TAB 1: LIVE INFERENCE (Samples + Upload + Live Webcam) -->
     <section id="panel-inference" class="tab-panel space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="glass-card rounded-xl p-6 space-y-5">
           <div>
-            <h2 class="text-base font-semibold text-sky-400 border-b border-slate-800 pb-2">Model & Detection Controls</h2>
-            <p class="text-xs text-slate-400 mt-2">Select any of your validation sample images or upload a custom photo to detect target class <strong class="text-emerald-400">Dela</strong>.</p>
+            <h2 class="text-base font-semibold text-sky-400 border-b border-slate-800 pb-2">Model &amp; Detection Controls</h2>
+            <p class="text-xs text-slate-400 mt-2">Use live webcam streaming, select validation samples, or upload a custom photo to detect target class <strong class="text-emerald-400">Dela</strong>.</p>
+          </div>
+
+          <!-- Webcam Controls -->
+          <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-200"><i class="fa-solid fa-video text-sky-400 mr-1.5"></i>Live Webcam Feed</span>
+              <span id="webcam_badge" class="text-[11px] mono text-slate-400">Off</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" id="start_webcam_btn" onclick="startWebcam()"
+                      class="py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition cursor-pointer">
+                <i class="fa-solid fa-play mr-1"></i>Start Camera
+              </button>
+              <button type="button" id="stop_webcam_btn" onclick="stopWebcam()" disabled
+                      class="py-2 px-3 rounded-lg bg-slate-800 hover:bg-rose-600 disabled:opacity-40 text-white text-xs font-semibold transition cursor-pointer">
+                <i class="fa-solid fa-stop mr-1"></i>Stop Camera
+              </button>
+            </div>
+            <label class="flex items-center gap-2 text-xs text-slate-300 pt-1 cursor-pointer select-none">
+              <input type="checkbox" id="auto_track_chk" onchange="toggleAutoTrack()" disabled class="accent-sky-500 rounded" />
+              <span>Continuous Real-Time Tracking (every 1.2s)</span>
+            </label>
           </div>
 
           <div>
@@ -182,17 +205,19 @@
 
         <div class="lg:col-span-2 glass-card rounded-xl p-6">
           <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
-            <h2 class="text-base font-semibold text-sky-400">Inference & Bounding Box Output</h2>
+            <h2 class="text-base font-semibold text-sky-400">Inference &amp; Bounding Box Output</h2>
             <span id="active_filename_tag" class="text-xs mono text-slate-400">sample1.jpg</span>
           </div>
           <div class="image-preview-container" id="preview_wrapper">
             <img id="active_image" src="sample1.jpg" alt="Face Detection Sample" />
+            <video id="webcam_video" autoplay playsinline muted class="hidden"></video>
+            <canvas id="capture_canvas" class="hidden"></canvas>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- TAB 2: PERFORMANCE (Real Ultralytics Val Metrics on 321 Val Images / 282 Instances) -->
+    <!-- TAB 2: PERFORMANCE -->
     <section id="panel-performance" class="tab-panel hidden space-y-6">
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div class="glass-card rounded-xl p-5">
@@ -216,7 +241,7 @@
           <p class="text-xs text-slate-400 mt-2">High Sensitivity on Val Set</p>
         </div>
         <div class="glass-card rounded-xl p-5">
-          <p class="text-xs uppercase tracking-wider text-slate-400">F1-Score & GFLOPs</p>
+          <p class="text-xs uppercase tracking-wider text-slate-400">F1-Score &amp; GFLOPs</p>
           <p class="text-3xl font-bold text-purple-400 mt-1 mono">0.953</p>
           <p class="text-xs text-emerald-400 mt-2 mono">5.4 GFLOPs &bull; 0.0ms NMS</p>
         </div>
@@ -224,12 +249,12 @@
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="glass-card rounded-xl p-6">
-          <h3 class="text-base font-semibold text-white mb-1">Training & Validation Loss Convergence</h3>
+          <h3 class="text-base font-semibold text-white mb-1">Training &amp; Validation Loss Convergence</h3>
           <p class="text-xs text-slate-400 mb-4">Box Regression, Classification, and DFL Loss on <span class="mono text-sky-300">patience-detection</span></p>
           <canvas id="lossChart" height="220"></canvas>
         </div>
         <div class="glass-card rounded-xl p-6">
-          <h3 class="text-base font-semibold text-white mb-1">Validation mAP@50 & mAP@50-95 Progression</h3>
+          <h3 class="text-base font-semibold text-white mb-1">Validation mAP@50 &amp; mAP@50-95 Progression</h3>
           <p class="text-xs text-slate-400 mb-4">Converging to verified mAP@50 = 0.9487 and mAP@50-95 = 0.6602</p>
           <canvas id="mapChart" height="220"></canvas>
         </div>
@@ -252,7 +277,7 @@
       </div>
 
       <div class="glass-card rounded-xl p-6">
-        <h3 class="text-base font-semibold text-white mb-3">Ultralytics Validation Summary Table (`runs/detect/val`)</h3>
+        <h3 class="text-base font-semibold text-white mb-3">Validation Summary Table (<span class="mono text-sky-400">runs/detect/val</span>)</h3>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm">
             <thead class="border-b border-slate-700 text-slate-400 text-xs uppercase">
@@ -300,7 +325,7 @@
       </div>
     </section>
 
-    <!-- TAB 4: CONTINGENCY MATRIX (Derived from 282 Ground Truth Instances & 321 Val Images) -->
+    <!-- TAB 4: CONTINGENCY MATRIX -->
     <section id="panel-contingency" class="tab-panel hidden space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
         <div class="glass-card rounded-xl p-6">
@@ -362,12 +387,12 @@
       </div>
     </section>
 
-    <!-- TAB 5: DATASET (730 Total Images on Ultralytics Platform: 409 Train / 321 Val) -->
+    <!-- TAB 5: DATASET -->
     <section id="panel-dataset" class="tab-panel hidden space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="glass-card rounded-xl p-6">
           <h3 class="text-base font-semibold text-white mb-1">Ultralytics Dataset Split (730 Images)</h3>
-          <p class="text-xs text-slate-400 mb-4">409 Training images (56%) & 321 Validation images (44%) for class <span class="text-emerald-400 font-semibold">Dela</span></p>
+          <p class="text-xs text-slate-400 mb-4">409 Training images (56%) &amp; 321 Validation images (44%) for class <span class="text-emerald-400 font-semibold">Dela</span></p>
           <canvas id="splitChart" height="220"></canvas>
         </div>
 
@@ -393,33 +418,33 @@
     <section id="panel-diagnostics" class="tab-panel hidden space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="glass-card rounded-xl p-6">
-          <h3 class="text-base font-semibold text-white mb-1">Bounding Box Spatial & Scale Distribution</h3>
+          <h3 class="text-base font-semibold text-white mb-1">Bounding Box Spatial &amp; Scale Distribution</h3>
           <p class="text-xs text-slate-400 mb-4">Normalized width vs. height scatter across 282 ground-truth validation boxes</p>
           <canvas id="diagScatter" height="220"></canvas>
         </div>
 
         <div class="glass-card rounded-xl p-6 space-y-4">
-          <h3 class="text-base font-semibold text-white">YOLO26n Architecture & Runtime Diagnostics</h3>
+          <h3 class="text-base font-semibold text-white">Model Architecture &amp; Runtime Diagnostics</h3>
           <ul class="space-y-3 text-sm">
             <li class="p-3 rounded-lg bg-slate-900 border border-emerald-500/20 flex items-start gap-3">
               <i class="fa-solid fa-circle-check text-emerald-400 mt-1"></i>
               <div>
-                <p class="font-semibold text-white">NMS-Free End-to-End Inference (`0.0 ms` NMS Loss)</p>
-                <p class="text-xs text-slate-400">Verified in `runs/detect/val`: 121 fused layers, 2,389,735 parameters, 5.4 GFLOPs with zero Non-Maximum Suppression bottleneck.</p>
+                <p class="font-semibold text-white">Single-Pass End-to-End Inference (<span class="mono">0.0 ms</span> NMS Loss)</p>
+                <p class="text-xs text-slate-400">Verified in <span class="mono">runs/detect/val</span>: 121 fused layers, 2,389,735 parameters, 5.4 GFLOPs with zero Non-Maximum Suppression bottleneck.</p>
               </div>
             </li>
             <li class="p-3 rounded-lg bg-slate-900 border border-emerald-500/20 flex items-start gap-3">
               <i class="fa-solid fa-circle-check text-emerald-400 mt-1"></i>
               <div>
-                <p class="font-semibold text-white">High Recall Across Multi-Person & Solo Frames (97.87%)</p>
+                <p class="font-semibold text-white">High Recall Across Multi-Person &amp; Solo Frames (97.87%)</p>
                 <p class="text-xs text-slate-400">Validated across 321 images (including 39 negative/background images and group shots) with 94.87% mAP@50.</p>
               </div>
             </li>
             <li class="p-3 rounded-lg bg-slate-900 border border-sky-500/20 flex items-start gap-3">
               <i class="fa-solid fa-microchip text-sky-400 mt-1"></i>
               <div>
-                <p class="font-semibold text-white">ONNX Runtime Serverless Deployment (`best.onnx`)</p>
-                <p class="text-xs text-slate-400">Exported FP32 ONNX graph (`9.4 MB`, input `1x3x640x640`, output `1x5x8400`) runs directly on Vercel's Python serverless runtime.</p>
+                <p class="font-semibold text-white">ONNX Runtime Serverless Deployment (<span class="mono">best.onnx</span>)</p>
+                <p class="text-xs text-slate-400">Exported FP32 ONNX graph (9.4 MB, input 1&times;3&times;640&times;640, output 1&times;5&times;8400) runs directly on Vercel's Python serverless runtime.</p>
               </div>
             </li>
           </ul>
@@ -450,9 +475,19 @@
     let currentImageHeight = 0;
     let lastDetections = [];
 
+    let webcamStream = null;
+    let isWebcamActive = false;
+    let autoTrackTimer = null;
+    let isDetectingFrame = false;
+
     const image = document.getElementById("active_image");
+    const video = document.getElementById("webcam_video");
+    const captureCanvas = document.getElementById("capture_canvas");
 
     function switchTab(tabId) {
+      if (tabId !== "inference" && isWebcamActive) {
+        stopWebcam();
+      }
       document.querySelectorAll(".tab-panel").forEach(p => p.classList.add("hidden"));
       document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
       document.getElementById("panel-" + tabId).classList.remove("hidden");
@@ -471,7 +506,80 @@
       document.getElementById("latency").innerText = "--";
     }
 
+    async function startWebcam() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Webcam access is not supported in this browser.");
+        return;
+      }
+      try {
+        webcamStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false
+        });
+        video.srcObject = webcamStream;
+        await video.play();
+
+        isWebcamActive = true;
+        selectedFile = null;
+        resetResults();
+
+        image.classList.add("hidden");
+        video.classList.remove("hidden");
+
+        document.getElementById("active_filename_tag").innerText = "LIVE WEBCAM STREAM";
+        document.getElementById("webcam_badge").innerText = "Live";
+        document.getElementById("webcam_badge").className = "text-[11px] mono text-emerald-400 font-bold";
+        document.getElementById("start_webcam_btn").disabled = true;
+        document.getElementById("stop_webcam_btn").disabled = false;
+        document.getElementById("auto_track_chk").disabled = false;
+      } catch (err) {
+        alert("Could not access webcam: " + err.message);
+      }
+    }
+
+    function stopWebcam() {
+      if (autoTrackTimer) {
+        clearInterval(autoTrackTimer);
+        autoTrackTimer = null;
+      }
+      document.getElementById("auto_track_chk").checked = false;
+      document.getElementById("auto_track_chk").disabled = true;
+
+      if (webcamStream) {
+        webcamStream.getTracks().forEach(track => track.stop());
+        webcamStream = null;
+      }
+
+      isWebcamActive = false;
+      video.srcObject = null;
+      video.classList.add("hidden");
+      image.classList.remove("hidden");
+
+      document.getElementById("webcam_badge").innerText = "Off";
+      document.getElementById("webcam_badge").className = "text-[11px] mono text-slate-400";
+      document.getElementById("start_webcam_btn").disabled = false;
+      document.getElementById("stop_webcam_btn").disabled = true;
+      document.getElementById("active_filename_tag").innerText = document.getElementById("image_select").value;
+      resetResults();
+    }
+
+    function toggleAutoTrack() {
+      const enabled = document.getElementById("auto_track_chk").checked;
+      if (enabled && isWebcamActive) {
+        runDetection(true);
+        autoTrackTimer = setInterval(() => {
+          if (isWebcamActive && !isDetectingFrame) {
+            runDetection(true);
+          }
+        }, 1200);
+      } else if (autoTrackTimer) {
+        clearInterval(autoTrackTimer);
+        autoTrackTimer = null;
+      }
+    }
+
     function changeSampleImage() {
+      if (isWebcamActive) stopWebcam();
       const filename = document.getElementById("image_select").value;
       selectedFile = null;
       resetResults();
@@ -487,6 +595,7 @@
     }
 
     function loadCustomImage(event) {
+      if (isWebcamActive) stopWebcam();
       const file = event.target.files[0];
       if (!file) return;
 
@@ -509,20 +618,21 @@
 
       if (!currentImageWidth || !currentImageHeight) return;
 
+      const activeEl = isWebcamActive ? video : image;
       const wrapperRect = wrapper.getBoundingClientRect();
-      const imageRect = image.getBoundingClientRect();
-      const offsetX = imageRect.left - wrapperRect.left;
-      const offsetY = imageRect.top - wrapperRect.top;
+      const mediaRect = activeEl.getBoundingClientRect();
+      const offsetX = mediaRect.left - wrapperRect.left;
+      const offsetY = mediaRect.top - wrapperRect.top;
 
       detections.forEach(detection => {
         const [x1, y1, x2, y2] = detection.bbox;
 
         const dynamicBox = document.createElement("div");
         dynamicBox.className = "bounding-box dynamic-box";
-        dynamicBox.style.left = `${offsetX + (x1 / currentImageWidth) * imageRect.width}px`;
-        dynamicBox.style.top = `${offsetY + (y1 / currentImageHeight) * imageRect.height}px`;
-        dynamicBox.style.width = `${((x2 - x1) / currentImageWidth) * imageRect.width}px`;
-        dynamicBox.style.height = `${((y2 - y1) / currentImageHeight) * imageRect.height}px`;
+        dynamicBox.style.left = `${offsetX + (x1 / currentImageWidth) * mediaRect.width}px`;
+        dynamicBox.style.top = `${offsetY + (y1 / currentImageHeight) * mediaRect.height}px`;
+        dynamicBox.style.width = `${((x2 - x1) / currentImageWidth) * mediaRect.width}px`;
+        dynamicBox.style.height = `${((y2 - y1) / currentImageHeight) * mediaRect.height}px`;
 
         const label = document.createElement("div");
         label.className = "box-label";
@@ -533,16 +643,39 @@
       });
     }
 
-    async function runDetection() {
+    function captureWebcamFrameFile() {
+      return new Promise((resolve, reject) => {
+        if (!video.videoWidth || !video.videoHeight) {
+          return reject(new Error("Webcam stream is still initializing."));
+        }
+        captureCanvas.width = video.videoWidth;
+        captureCanvas.height = video.videoHeight;
+        const ctx = captureCanvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+        captureCanvas.toBlob(blob => {
+          if (!blob) return reject(new Error("Failed to capture webcam frame."));
+          resolve(new File([blob], "webcam_frame.jpg", { type: "image/jpeg" }));
+        }, "image/jpeg", 0.9);
+      });
+    }
+
+    async function runDetection(silent = false) {
+      if (isDetectingFrame) return;
+      isDetectingFrame = true;
+
       const button = document.getElementById("detect_button");
-      button.disabled = true;
-      button.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Detecting...';
-      resetResults();
+      if (!silent) {
+        button.disabled = true;
+        button.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Detecting...';
+        resetResults();
+      }
 
       try {
         let file = selectedFile;
 
-        if (!file) {
+        if (isWebcamActive) {
+          file = await captureWebcamFrameFile();
+        } else if (!file) {
           const sampleFilename = document.getElementById("image_select").value;
           const sampleResponse = await fetch(sampleFilename);
           if (!sampleResponse.ok) {
@@ -582,15 +715,20 @@
 
         drawDetections(result.detections);
 
-        if (result.detection_count === 0) {
+        if (!silent && result.detection_count === 0) {
           alert("No matching faces (Dela) were detected at this confidence threshold.");
         }
       } catch (error) {
         console.error("Face detection error:", error);
-        alert(`Could not complete detection: ${error.message}`);
+        if (!silent) {
+          alert(`Could not complete detection: ${error.message}`);
+        }
       } finally {
-        button.disabled = false;
-        button.innerHTML = '<i class="fa-solid fa-crosshairs mr-1.5"></i>Run Face Detection';
+        isDetectingFrame = false;
+        if (!silent) {
+          button.disabled = false;
+          button.innerHTML = '<i class="fa-solid fa-crosshairs mr-1.5"></i>Run Face Detection';
+        }
       }
     }
 
