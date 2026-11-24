@@ -29,33 +29,35 @@
       border-color: #38bdf8;
       box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
     }
+    /* Centers the frame horizontally without forcing extra vertical empty space */
     .image-preview-container {
-      position: relative;
       width: 100%;
-      background: #090d16;
-      border: 1px solid #334155;
-      border-radius: 12px;
-      padding: 0.75rem;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 280px;
     }
+    /* Border hugs the exact width and height of whatever image or video is loaded */
     .media-stage {
       position: relative;
-      display: inline-block;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: fit-content;
       max-width: 100%;
       margin: 0 auto;
+      background: #090d16;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 6px;
       line-height: 0;
     }
     .media-stage img,
     .media-stage video {
       display: block;
       max-width: 100%;
-      max-height: 65vh;
+      max-height: 68vh;
       width: auto;
       height: auto;
-      margin: 0 auto;
       border-radius: 8px;
     }
     .bounding-box {
@@ -139,9 +141,9 @@
 
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
 
-    <!-- TAB 1: LIVE INFERENCE (Samples + Upload + Live Webcam) -->
+    <!-- TAB 1: LIVE INFERENCE -->
     <section id="panel-inference" class="tab-panel space-y-6">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div class="glass-card rounded-xl p-6 space-y-5">
           <div>
             <h2 class="text-base font-semibold text-sky-400 border-b border-slate-800 pb-2">Model &amp; Detection Controls</h2>
@@ -215,9 +217,9 @@
         </div>
 
         <div class="lg:col-span-2 glass-card rounded-xl p-6">
-          <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4 gap-2">
             <h2 class="text-base font-semibold text-sky-400">Inference &amp; Bounding Box Output</h2>
-            <span id="active_filename_tag" class="text-xs mono text-slate-400">sample1.jpg</span>
+            <span id="active_filename_tag" class="text-xs mono text-slate-400 truncate max-w-[160px] sm:max-w-none">sample1.jpg</span>
           </div>
           <div class="image-preview-container" id="preview_wrapper">
             <div class="media-stage" id="media_stage">
