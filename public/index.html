@@ -30,13 +30,12 @@
       box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
     }
     /* Centers the frame horizontally without forcing extra vertical empty space */
-    .image-preview-container {
+   .image-preview-container {
       width: 100%;
       display: flex;
       justify-content: center;
       align-items: center;
     }
-    /* Border hugs the exact width and height of whatever image or video is loaded */
     .media-stage {
       position: relative;
       display: inline-flex;
@@ -516,135 +515,24 @@
       document.getElementById("conf_val").innerText = Number(value).toFixed(2);
     }
 
+    let detectionRequestId = 0;
+
     function resetResults() {
-      const stage = document.getElementById("media_stage");
-      stage.querySelectorAll(".dynamic-box").forEach(el => el.remove());
+      detectionRequestId++;
+      document.querySelectorAll(".dynamic-box").forEach(el => el.remove());
       lastDetections = [];
+      currentImageWidth = 0;
+      currentImageHeight = 0;
       document.getElementById("face_count").innerText = "Not yet tested";
       document.getElementById("latency").innerText = "--";
     }
 
-    function drawDetections(detections) {
-      lastDetections = detections;
-      const stage = document.getElementById("media_stage");
-      stage.querySelectorAll(".dynamic-box").forEach(el => el.remove());
-
-      if (!currentImageWidth || !currentImageHeight) return;
-
-      const activeEl = isWebcamActive ? video : image;
-      const stageRect = stage.getBoundingClientRect();
-      const mediaRect = activeEl.getBoundingClientRect();
-      if (!mediaRect.width || !mediaRect.height) return;
-
-      const offsetX = mediaRect.left - stageRect.left;
-      const offsetY = mediaRect.top - stageRect.top;
-
-      detections.forEach(detection => {
-        const [x1, y1, x2, y2] = detection.bbox;
-        const boxLeft = offsetX + (x1 / currentImageWidth) * mediaRect.width;
-        const boxTop = offsetY + (y1 / currentImageHeight) * mediaRect.height;
-        const boxWidth = ((x2 - x1) / currentImageWidth) * mediaRect.width;
-        const boxHeight = ((y2 - y1) / currentImageHeight) * mediaRect.height;
-
-        const dynamicBox = document.createElement("div");
-        dynamicBox.className = "bounding-box dynamic-box";
-        dynamicBox.style.left = `${boxLeft}px`;
-        dynamicBox.style.top = `${boxTop}px`;
-        dynamicBox.style.width = `${boxWidth}px`;
-        dynamicBox.style.height = `${boxHeight}px`;
-
-        const label = document.createElement("div");
-        label.className = "box-label";
-        label.innerText = `${detection.label} (${(detection.confidence * 100).toFixed(2)}%)`;
-        if (boxTop < 26) {
-          label.style.top = "2px";
-        }
-        if (boxLeft < 4) {
-          label.style.left = "2px";
-        }
-
-        dynamicBox.appendChild(label);
-        stage.appendChild(dynamicBox);
-      });
-    }
-
-    async function startWebcam() {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert("Webcam access is not supported in this browser.");
-        return;
-      }
-      try {
-        webcamStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: false
-        });
-        video.srcObject = webcamStream;
-        await video.play();
-
-        isWebcamActive = true;
-        selectedFile = null;
-        resetResults();
-
-        image.classList.add("hidden");
-        video.classList.remove("hidden");
-
-        document.getElementById("active_filename_tag").innerText = "LIVE WEBCAM STREAM";
-        document.getElementById("webcam_badge").innerText = "Live";
-        document.getElementById("webcam_badge").className = "text-[11px] mono text-emerald-400 font-bold";
-        document.getElementById("start_webcam_btn").disabled = true;
-        document.getElementById("stop_webcam_btn").disabled = false;
-        document.getElementById("auto_track_chk").disabled = false;
-      } catch (err) {
-        alert("Could not access webcam: " + err.message);
-      }
-    }
-
-    function stopWebcam() {
-      if (autoTrackTimer) {
-        clearInterval(autoTrackTimer);
-        autoTrackTimer = null;
-      }
-      document.getElementById("auto_track_chk").checked = false;
-      document.getElementById("auto_track_chk").disabled = true;
-
-      if (webcamStream) {
-        webcamStream.getTracks().forEach(track => track.stop());
-        webcamStream = null;
-      }
-
-      isWebcamActive = false;
-      video.srcObject = null;
-      video.classList.add("hidden");
-      image.classList.remove("hidden");
-
-      document.getElementById("webcam_badge").innerText = "Off";
-      document.getElementById("webcam_badge").className = "text-[11px] mono text-slate-400";
-      document.getElementById("start_webcam_btn").disabled = false;
-      document.getElementById("stop_webcam_btn").disabled = true;
-      document.getElementById("active_filename_tag").innerText = document.getElementById("image_select").value;
-      resetResults();
-    }
-
-    function toggleAutoTrack() {
-      const enabled = document.getElementById("auto_track_chk").checked;
-      if (enabled && isWebcamActive) {
-        runDetection(true);
-        autoTrackTimer = setInterval(() => {
-          if (isWebcamActive && !isDetectingFrame) {
-            runDetection(true);
-          }
-        }, 1200);
-      } else if (autoTrackTimer) {
-        clearInterval(autoTrackTimer);
-        autoTrackTimer = null;
-      }
-    }
-
     function changeSampleImage() {
       if (isWebcamActive) stopWebcam();
+      resetResults();
+
       const filename = document.getElementById("image_select").value;
       selectedFile = null;
-      resetResults();
 
       if (currentImageUrl) {
         URL.revokeObjectURL(currentImageUrl);
@@ -661,8 +549,8 @@
       const file = event.target.files[0];
       if (!file) return;
 
-      selectedFile = file;
       resetResults();
+      selectedFile = file;
 
       if (currentImageUrl) {
         URL.revokeObjectURL(currentImageUrl);
@@ -673,31 +561,17 @@
       document.getElementById("active_filename_tag").innerText = file.name;
     }
 
-    function captureWebcamFrameFile() {
-      return new Promise((resolve, reject) => {
-        if (!video.videoWidth || !video.videoHeight) {
-          return reject(new Error("Webcam stream is still initializing."));
-        }
-        captureCanvas.width = video.videoWidth;
-        captureCanvas.height = video.videoHeight;
-        const ctx = captureCanvas.getContext("2d");
-        ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
-        captureCanvas.toBlob(blob => {
-          if (!blob) return reject(new Error("Failed to capture webcam frame."));
-          resolve(new File([blob], "webcam_frame.jpg", { type: "image/jpeg" }));
-        }, "image/jpeg", 0.9);
-      });
-    }
-
     async function runDetection(silent = false) {
       if (isDetectingFrame) return;
       isDetectingFrame = true;
+      const currentReq = ++detectionRequestId;
 
       const button = document.getElementById("detect_button");
       if (!silent) {
         button.disabled = true;
         button.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Detecting...';
-        resetResults();
+        document.querySelectorAll(".dynamic-box").forEach(el => el.remove());
+        lastDetections = [];
       }
 
       try {
@@ -737,6 +611,9 @@
           throw new Error(result.detail || "Detection failed.");
         }
 
+        // Ignore result if user switched to a different image while detecting
+        if (currentReq !== detectionRequestId) return;
+
         currentImageWidth = result.image_width;
         currentImageHeight = result.image_height;
 
@@ -750,7 +627,7 @@
         }
       } catch (error) {
         console.error("Face detection error:", error);
-        if (!silent) {
+        if (!silent && currentReq === detectionRequestId) {
           alert(`Could not complete detection: ${error.message}`);
         }
       } finally {
@@ -761,12 +638,6 @@
         }
       }
     }
-
-    window.addEventListener("resize", () => {
-      if (lastDetections.length > 0) {
-        drawDetections(lastDetections);
-      }
-    });
 
     async function checkBackendHealth() {
       try {
