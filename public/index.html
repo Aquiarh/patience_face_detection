@@ -9,12 +9,13 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
-    * { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; }
     body {
       font-family: 'Inter', sans-serif;
       background-color: #0b0f19;
       color: #f8fafc;
       margin: 0;
+      overflow-x: hidden;
     }
     .mono { font-family: 'JetBrains Mono', monospace; }
     .glass-card {
@@ -57,13 +58,6 @@
       margin: 0 auto;
       border-radius: 8px;
     }
-    .image-preview-container img,
-    .image-preview-container video {
-      max-width: 100%;
-      max-height: 480px;
-      height: auto;
-      display: block;
-    }
     .bounding-box {
       position: absolute;
       border: 3px solid #10b981;
@@ -75,10 +69,10 @@
     .box-label {
       position: absolute;
       top: -24px;
-      left: -3px;
+      left: 0;
       background: #10b981;
       color: #042f2e;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       font-weight: 700;
       padding: 2px 6px;
       border-radius: 3px;
@@ -226,11 +220,12 @@
             <span id="active_filename_tag" class="text-xs mono text-slate-400">sample1.jpg</span>
           </div>
           <div class="image-preview-container" id="preview_wrapper">
-          <div class="media-stage" id="media_stage">
-             <img id="active_image" src="sample1.jpg" alt="Face Detection Sample" />
-             <video id="webcam_video" autoplay playsinline muted class="hidden"></video>
-             <canvas id="capture_canvas" class="hidden"></canvas>
-         </div>
+            <div class="media-stage" id="media_stage">
+              <img id="active_image" src="sample1.jpg" alt="Face Detection Sample" />
+              <video id="webcam_video" autoplay playsinline muted class="hidden"></video>
+              <canvas id="capture_canvas" class="hidden"></canvas>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -510,6 +505,9 @@
       document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
       document.getElementById("panel-" + tabId).classList.remove("hidden");
       document.getElementById("tab-" + tabId).classList.add("active");
+      if (tabId === "inference" && lastDetections.length > 0) {
+        requestAnimationFrame(() => drawDetections(lastDetections));
+      }
     }
 
     function updateConfidence(value) {
@@ -517,44 +515,87 @@
     }
 
     function resetResults() {
-  const stage = document.getElementById("media_stage");
-  stage.querySelectorAll(".dynamic-box").forEach(el => el.remove());
-  lastDetections = [];
-  document.getElementById("face_count").innerText = "Not yet tested";
-  document.getElementById("latency").innerText = "--";
-}
+      const stage = document.getElementById("media_stage");
+      stage.querySelectorAll(".dynamic-box").forEach(el => el.remove());
+      lastDetections = [];
+      document.getElementById("face_count").innerText = "Not yet tested";
+      document.getElementById("latency").innerText = "--";
+    }
 
-function drawDetections(detections) {
-  lastDetections = detections;
-  const stage = document.getElementById("media_stage");
-  stage.querySelectorAll(".dynamic-box").forEach(el => el.remove());
+    function drawDetections(detections) {
+      lastDetections = detections;
+      const stage = document.getElementById("media_stage");
+      stage.querySelectorAll(".dynamic-box").forEach(el => el.remove());
 
-  if (!currentImageWidth || !currentImageHeight) return;
+      if (!currentImageWidth || !currentImageHeight) return;
 
-  const activeEl = isWebcamActive ? video : image;
-  const stageRect = stage.getBoundingClientRect();
-  const mediaRect = activeEl.getBoundingClientRect();
-  const offsetX = mediaRect.left - stageRect.left;
-  const offsetY = mediaRect.top - stageRect.top;
+      const activeEl = isWebcamActive ? video : image;
+      const stageRect = stage.getBoundingClientRect();
+      const mediaRect = activeEl.getBoundingClientRect();
+      if (!mediaRect.width || !mediaRect.height) return;
 
-  detections.forEach(detection => {
-    const [x1, y1, x2, y2] = detection.bbox;
+      const offsetX = mediaRect.left - stageRect.left;
+      const offsetY = mediaRect.top - stageRect.top;
 
-    const dynamicBox = document.createElement("div");
-    dynamicBox.className = "bounding-box dynamic-box";
-    dynamicBox.style.left = `${offsetX + (x1 / currentImageWidth) * mediaRect.width}px`;
-    dynamicBox.style.top = `${offsetY + (y1 / currentImageHeight) * mediaRect.height}px`;
-    dynamicBox.style.width = `${((x2 - x1) / currentImageWidth) * mediaRect.width}px`;
-    dynamicBox.style.height = `${((y2 - y1) / currentImageHeight) * mediaRect.height}px`;
+      detections.forEach(detection => {
+        const [x1, y1, x2, y2] = detection.bbox;
+        const boxLeft = offsetX + (x1 / currentImageWidth) * mediaRect.width;
+        const boxTop = offsetY + (y1 / currentImageHeight) * mediaRect.height;
+        const boxWidth = ((x2 - x1) / currentImageWidth) * mediaRect.width;
+        const boxHeight = ((y2 - y1) / currentImageHeight) * mediaRect.height;
 
-    const label = document.createElement("div");
-    label.className = "box-label";
-    label.innerText = `${detection.label} (${(detection.confidence * 100).toFixed(2)}%)`;
+        const dynamicBox = document.createElement("div");
+        dynamicBox.className = "bounding-box dynamic-box";
+        dynamicBox.style.left = `${boxLeft}px`;
+        dynamicBox.style.top = `${boxTop}px`;
+        dynamicBox.style.width = `${boxWidth}px`;
+        dynamicBox.style.height = `${boxHeight}px`;
 
-    dynamicBox.appendChild(label);
-    stage.appendChild(dynamicBox);
-  });
-}
+        const label = document.createElement("div");
+        label.className = "box-label";
+        label.innerText = `${detection.label} (${(detection.confidence * 100).toFixed(2)}%)`;
+        if (boxTop < 26) {
+          label.style.top = "2px";
+        }
+        if (boxLeft < 4) {
+          label.style.left = "2px";
+        }
+
+        dynamicBox.appendChild(label);
+        stage.appendChild(dynamicBox);
+      });
+    }
+
+    async function startWebcam() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Webcam access is not supported in this browser.");
+        return;
+      }
+      try {
+        webcamStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false
+        });
+        video.srcObject = webcamStream;
+        await video.play();
+
+        isWebcamActive = true;
+        selectedFile = null;
+        resetResults();
+
+        image.classList.add("hidden");
+        video.classList.remove("hidden");
+
+        document.getElementById("active_filename_tag").innerText = "LIVE WEBCAM STREAM";
+        document.getElementById("webcam_badge").innerText = "Live";
+        document.getElementById("webcam_badge").className = "text-[11px] mono text-emerald-400 font-bold";
+        document.getElementById("start_webcam_btn").disabled = true;
+        document.getElementById("stop_webcam_btn").disabled = false;
+        document.getElementById("auto_track_chk").disabled = false;
+      } catch (err) {
+        alert("Could not access webcam: " + err.message);
+      }
+    }
 
     function stopWebcam() {
       if (autoTrackTimer) {
@@ -630,38 +671,6 @@ function drawDetections(detections) {
       document.getElementById("active_filename_tag").innerText = file.name;
     }
 
-    function drawDetections(detections) {
-      lastDetections = detections;
-      const wrapper = document.getElementById("preview_wrapper");
-      wrapper.querySelectorAll(".dynamic-box").forEach(el => el.remove());
-
-      if (!currentImageWidth || !currentImageHeight) return;
-
-      const activeEl = isWebcamActive ? video : image;
-      const wrapperRect = wrapper.getBoundingClientRect();
-      const mediaRect = activeEl.getBoundingClientRect();
-      const offsetX = mediaRect.left - wrapperRect.left;
-      const offsetY = mediaRect.top - wrapperRect.top;
-
-      detections.forEach(detection => {
-        const [x1, y1, x2, y2] = detection.bbox;
-
-        const dynamicBox = document.createElement("div");
-        dynamicBox.className = "bounding-box dynamic-box";
-        dynamicBox.style.left = `${offsetX + (x1 / currentImageWidth) * mediaRect.width}px`;
-        dynamicBox.style.top = `${offsetY + (y1 / currentImageHeight) * mediaRect.height}px`;
-        dynamicBox.style.width = `${((x2 - x1) / currentImageWidth) * mediaRect.width}px`;
-        dynamicBox.style.height = `${((y2 - y1) / currentImageHeight) * mediaRect.height}px`;
-
-        const label = document.createElement("div");
-        label.className = "box-label";
-        label.innerText = `${detection.label} (${(detection.confidence * 100).toFixed(2)}%)`;
-
-        dynamicBox.appendChild(label);
-        wrapper.appendChild(dynamicBox);
-      });
-    }
-
     function captureWebcamFrameFile() {
       return new Promise((resolve, reject) => {
         if (!video.videoWidth || !video.videoHeight) {
@@ -732,7 +741,7 @@ function drawDetections(detections) {
         document.getElementById("face_count").innerText = `${result.detection_count} detected`;
         document.getElementById("latency").innerText = `${result.inference_ms.toFixed(2)} ms`;
 
-        drawDetections(result.detections);
+        requestAnimationFrame(() => drawDetections(result.detections));
 
         if (!silent && result.detection_count === 0) {
           alert("No matching faces (Dela) were detected at this confidence threshold.");
