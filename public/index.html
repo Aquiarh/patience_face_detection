@@ -399,11 +399,12 @@
     </section>
 
     <!-- TAB 5: DATASET -->
+    <!-- TAB 5: DATASET -->
     <section id="panel-dataset" class="tab-panel hidden space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="glass-card rounded-xl p-6">
-          <h3 class="text-base font-semibold text-white mb-1">Ultralytics Dataset Split (730 Images)</h3>
-          <p class="text-xs text-slate-400 mb-4">409 Training images (56%) &amp; 321 Validation images (44%) for class <span class="text-emerald-400 font-semibold">Dela</span></p>
+          <h3 class="text-base font-semibold text-white mb-1">Ultralytics Dataset Split (1,000 Images)</h3>
+          <p class="text-xs text-slate-400 mb-4">679 Training images (67.9%) &amp; 321 Validation images (32.1%) for class <span class="text-emerald-400 font-semibold">Dela</span></p>
           <canvas id="splitChart" height="220"></canvas>
         </div>
 
@@ -417,7 +418,7 @@
                target="_blank" rel="noopener noreferrer"
                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/30 text-xs mono text-sky-300 transition">
               <i class="fa-solid fa-database"></i>
-              <span>Ultralytics Dataset (730 Imgs)</span>
+              <span>Ultralytics Dataset (1,000 Imgs)</span>
             </a>
           </div>
           <div id="dataset_gallery" class="grid grid-cols-2 sm:grid-cols-5 gap-3"></div>
@@ -878,8 +879,8 @@
       new Chart(document.getElementById("splitChart"), {
         type: "doughnut",
         data: {
-          labels: ["Train (409 Images - 56%)", "Validation (321 Images - 44%)"],
-          datasets: [{ data: [409, 321], backgroundColor: ["#0284c7", "#10b981"], borderWidth: 0 }]
+          labels: ["Train (679 Images - 67.9%)", "Validation (321 Images - 32.1%)"],
+          datasets: [{ data: [679, 321], backgroundColor: ["#0284c7", "#10b981"], borderWidth: 0 }]
         },
         options: { plugins: { legend: { position: "bottom", labels: { color: "#cbd5e1" } } } }
       });
