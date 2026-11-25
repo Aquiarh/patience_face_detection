@@ -37,33 +37,27 @@
       width: 100%;
       display: flex;
       justify-content: center;
-      align-items:flex-start;
-      background: transparent !important;
-      border: none !important;
-      padding: 0 !important;
-      min-height: 0 !important;
-      max-height: none !important;
+      align-items: flex-start;
     }
     .media-stage {
       position: relative;
-      display: inline-block;
-      width: fit-content;
-      height: fit-content;
+      display: block;
       max-width: 100%;
+      max-height: 62vh;
       margin: 0 auto;
       background: #090d16;
       border: 1px solid #334155;
       border-radius: 12px;
       padding: 6px;
-      line-height: 0;
+      overflow: hidden;
     }
     .media-stage img,
     .media-stage video {
       display: block;
-      width: auto;
-      max-width: 100%;
-      max-height: 62vh;
-      height: auto;
+      width: 100%;
+      height: 100%;
+      max-height: calc(62vh - 12px);
+      object-fit: contain;
       border-radius: 8px;
     }
     .bounding-box {
@@ -501,6 +495,30 @@
     const video = document.getElementById("webcam_video");
     const captureCanvas = document.getElementById("capture_canvas");
 
+    function syncStageAspectRatio() {
+      const stage = document.getElementById("media_stage");
+      if (isWebcamActive && video.videoWidth && video.videoHeight) {
+        stage.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+        stage.style.width = "min(100%, 640px)";
+      } else if (image.naturalWidth && image.naturalHeight) {
+        stage.style.aspectRatio = `${image.naturalWidth} / ${image.naturalHeight}`;
+        // Limit width on tall portraits so max-height (62vh) never creates sidebars
+        const maxH = window.innerHeight * 0.62;
+        const idealW = (image.naturalWidth / image.naturalHeight) * maxH + 12;
+        stage.style.width = `min(100%, ${Math.round(idealW)}px)`;
+      }
+    }
+
+    image.addEventListener("load", () => {
+      syncStageAspectRatio();
+      if (lastDetections.length > 0) {
+        requestAnimationFrame(() => drawDetections(lastDetections));
+      }
+    });
+
+    video.addEventListener("loadedmetadata", syncStageAspectRatio);
+    window.addEventListener("resize", syncStageAspectRatio);
+    
     function switchTab(tabId) {
       if (tabId !== "inference" && isWebcamActive) {
         stopWebcam();
